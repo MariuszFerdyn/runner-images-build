@@ -35,8 +35,8 @@ jobs:
         $imageName="Runner-Image-Ubuntu2204"
         
         # Variables for target gallery
-        $newGalleryName={{ variables.GALERYNAME ]]
-        $newGalleryResourceGroup={{ variables.GALERYNAME ]]
+        $newGalleryName={{ variables.GALERYNAME }}
+        $newGalleryResourceGroup={{ variables.GALERYNAME }}
         $location={{ variables.Region }}
         $imageDefinition=$imageName
         
