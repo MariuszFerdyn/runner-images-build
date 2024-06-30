@@ -10,17 +10,52 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     
-    - name: Navigate to Workspace
+    - name: 'Navigate to Workspace'
       run: cd $GITHUB_WORKSPACE
 
-    - name: dir
+    - name: 'dir just for debug'
       run: |
         dir
 
-    - name: 'Run az commands'
+    - name: 'Build Ubyntu 2204 Image'
       shell: pwsh
       run: |
         git clone https://github.com/actions/virtual-environments.git
         cd ./virtual-environments
         Import-Module .\helpers\GenerateResourcesAndImage.ps1
-        GenerateResourcesAndImage -SubscriptionId ${{ secrets. SUBSCRIPTIONID }} -ResourceGroupName "DevOpsPackerAgentvUbuntu2204" -ImageGenerationRepositoryRoot "$pwd" -ImageType Ubuntu2204 -AzureLocation "swedencentral" -AzureClientId ${{ secrets.APPLICATIONID }} -AzureClientSecret ${{ secrets.SECRET }} -AzureTenantId ${{ secrets.TENANTID }}
+        GenerateResourcesAndImage -SubscriptionId ${{ secrets.SUBSCRIPTIONID }} -ResourceGroupName {{ variables.UbuntuImageResourceGroup }} -ImageGenerationRepositoryRoot "$pwd" -ImageType Ubuntu2204 -AzureLocation {{ variables.Region }} -AzureClientId ${{ secrets.APPLICATIONID }} -AzureClientSecret ${{ secrets.SECRET }} -AzureTenantId ${{ secrets.TENANTID }}
+
+
+    - name: 'Export Image'
+      shell: pwsh
+      run: |
+        # Variables for source image
+        $subscriptionId=${{ secrets.SUBSCRIPTIONID }}
+        $resourceGroup={{ variables.UbuntuImageResourceGroup }}
+        $imageName="Runner-Image-Ubuntu2204"
+        
+        # Variables for target gallery
+        $newGalleryName={{ variables.GALERYNAME ]]
+        $newGalleryResourceGroup={{ variables.GALERYNAME ]]
+        $location={{ variables.Region }}
+        $imageDefinition=$imageName
+        
+        
+        # Login to Azure
+        az login
+        
+        # Set the subscription context
+        az account set --subscription $subscriptionId
+        
+        # Create a new resource group for the gallery if it doesn't exist
+        az group create --name $newGalleryResourceGroup --location $location
+        
+        # Create a new image gallery
+        az sig create --resource-group $newGalleryResourceGroup --gallery-name $newGalleryName --location $location
+        
+        # Create an image definition in the gallery
+        az sig image-definition create --resource-group $newGalleryResourceGroup --gallery-name $newGalleryName --gallery-image-definition $imageDefinition --os-type Windows --publisher myPublisher --offer myOffer --sku mySku --os-state generalized
+        
+        # Finally, copy the image to the gallery
+        
+        az sig image-version create --resource-group $newGalleryResourceGroup --gallery-name $newGalleryName --gallery-image-definition $imageDefinition --gallery-image-version 1.0.0 --location $location --managed-image "/subscriptions/$subscriptionId/resourceGroups/$resourceGroup/providers/Microsoft.Compute/images/$imageName"
