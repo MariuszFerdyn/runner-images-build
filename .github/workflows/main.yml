@@ -1,0 +1,27 @@
+name: Deploy and Build
+
+on:
+  push:
+    branches: master
+
+jobs:
+  build:
+    runs-on: windows-2019
+
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Navigate to Workspace
+      run: cd $GITHUB_WORKSPACE
+
+    - name: dir
+      run: |
+        dir
+
+    - name: 'Run az commands'
+      shell: pwsh
+      run: |
+        git clone https://github.com/actions/virtual-environments.git
+        cd ./virtual-environments
+        Import-Module .\helpers\GenerateResourcesAndImage.ps1
+        GenerateResourcesAndImage -SubscriptionId ${{ secrets. SUBSCRIPTIONID }} -ResourceGroupName "DevOpsPackerAgentvUbuntu2204" -ImageGenerationRepositoryRoot "$pwd" -ImageType Ubuntu2204 -AzureLocation "swedencentral" -AzureClientId ${{ secrets.APPLICATIONID }} -AzureClientSecret ${{ secrets.SECRET }} -AzureTenantId ${{ secrets.TENANTID }}
