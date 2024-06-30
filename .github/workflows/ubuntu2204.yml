@@ -23,26 +23,26 @@ jobs:
         git clone https://github.com/actions/virtual-environments.git
         cd ./virtual-environments
         Import-Module .\helpers\GenerateResourcesAndImage.ps1
-        #GenerateResourcesAndImage -SubscriptionId ${{ secrets.SUBSCRIPTIONID }} -ResourceGroupName {{ variables.UbuntuImageResourceGroup }} -ImageGenerationRepositoryRoot "$pwd" -ImageType Ubuntu2204 -AzureLocation {{ variables.Region }} -AzureClientId ${{ secrets.APPLICATIONID }} -AzureClientSecret ${{ secrets.SECRET }} -AzureTenantId ${{ secrets.TENANTID }}
+        #GenerateResourcesAndImage -SubscriptionId ${{ secrets.SUBSCRIPTIONID }} -ResourceGroupName ${{ env.UbuntuImageResourceGroup }} -ImageGenerationRepositoryRoot "$pwd" -ImageType Ubuntu2204 -AzureLocation ${{ env.Region }} -AzureClientId ${{ secrets.APPLICATIONID }} -AzureClientSecret ${{ secrets.SECRET }} -AzureTenantId ${{ secrets.TENANTID }}
 
 
     - name: 'Export Image'
       shell: pwsh
       run: |
-        # Variables for source image
+        # env for source image
         $subscriptionId=${{ secrets.SUBSCRIPTIONID }}
-        $resourceGroup={{ variables.UbuntuImageResourceGroup }}
+        $resourceGroup=${{ env.UbuntuImageResourceGroup }}
         $imageName="Runner-Image-Ubuntu2204"
         
-        # Variables for target gallery
-        $newGalleryName={{ variables.GALERYNAME }}
-        $newGalleryResourceGroup={{ variables.GALERYNAME }}
-        $location={{ variables.Region }}
+        # env for target gallery
+        $newGalleryName=${{ env.GALERYNAME }}
+        $newGalleryResourceGroup=${{ env.GALERYNAME }}
+        $location=${{ env.Region }}
         $imageDefinition=$imageName
         
         
         # Login to Azure
-        az login --service-principal -u ${{ secrets.APPLICATIONID }} -p ${{ secrets.SECRET }} --tenant 
+        az login --service-principal -u ${{ secrets.APPLICATIONID }} -p ${{ secrets.SECRET }} --tenant ${{ secrets.TENANTID }}
         
         # Set the subscription context
         az account set --subscription $subscriptionId
