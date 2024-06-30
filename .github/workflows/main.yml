@@ -1,0 +1,36 @@
+name: Deploy and Build
+
+on:
+  push:
+    branches: master
+
+jobs:
+  build:
+    runs-on: windows-2019
+
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Navigate to Workspace
+      run: cd $GITHUB_WORKSPACE
+
+    - name: dir
+      run: |
+        dir
+
+    - name: 'Run az commands'
+      shell: pwsh
+      run: |
+        $Region="West Europe"
+        $ResourceGroup="mftestweb5"
+        $WebResourceName="mftestweb5"
+        az webapp list-runtimes
+        az group create -l $Region -n $ResourceGroup
+        az appservice plan create -l $Region -g $ResourceGroup -n $WebResourceName --sku B1
+        az webapp create -g $ResourceGroup -n $WebResourceName -p $WebResourceName --runtime "ASPNET:V4.8"
+        dir
+        cd _build
+        Compress-Archive -Path * -DestinationPath ..\app.zip
+        cd ..
+        dir
+        az webapp deploy --resource-group $ResourceGroup --name $WebResourceName --src-path app.zip
