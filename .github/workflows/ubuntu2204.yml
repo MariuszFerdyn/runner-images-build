@@ -17,7 +17,7 @@ jobs:
       run: |
         dir
 
-    - name: 'Build Ubyntu 2204 Image'
+    - name: 'Build Ubuntu 2204 Image'
       shell: pwsh
       run: |
         git clone https://github.com/actions/virtual-environments.git
