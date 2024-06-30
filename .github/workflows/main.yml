@@ -42,7 +42,7 @@ jobs:
         
         
         # Login to Azure
-        az login
+        az login --service-principal -u ${{ secrets.APPLICATIONID }} -p ${{ secrets.SECRET }} --tenant 
         
         # Set the subscription context
         az account set --subscription $subscriptionId
