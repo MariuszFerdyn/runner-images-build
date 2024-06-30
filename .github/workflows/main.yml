@@ -21,16 +21,7 @@ jobs:
     - name: 'Run az commands'
       shell: pwsh
       run: |
-        $Region="West Europe"
-        $ResourceGroup="mftestweb5"
-        $WebResourceName="mftestweb5"
-        az webapp list-runtimes
-        az group create -l $Region -n $ResourceGroup
-        az appservice plan create -l $Region -g $ResourceGroup -n $WebResourceName --sku B1
-        az webapp create -g $ResourceGroup -n $WebResourceName -p $WebResourceName --runtime "ASPNET:V4.8"
-        dir
-        cd _build
-        Compress-Archive -Path * -DestinationPath ..\app.zip
-        cd ..
-        dir
-        az webapp deploy --resource-group $ResourceGroup --name $WebResourceName --src-path app.zip
+        git clone https://github.com/actions/virtual-environments.git
+        cd ./virtual-environments
+        Import-Module .\helpers\GenerateResourcesAndImage.ps1
+        GenerateResourcesAndImage -SubscriptionId ${{ secrets. SUBSCRIPTIONID }} -ResourceGroupName "DevOpsPackerAgentvUbuntu2204" -ImageGenerationRepositoryRoot "$pwd" -ImageType Ubuntu2204 -AzureLocation "swedencentral" -AzureClientId ${{ secrets.APPLICATIONID }} -AzureClientSecret ${{ secrets.SECRET }} -AzureTenantId ${{ secrets.TENANTID }}
