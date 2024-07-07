@@ -17,24 +17,6 @@ jobs:
       run: |
         dir
 
-    - name: 'Test Variables'
-      shell: powershell
-      run: |
-        # env for source image
-        $subscriptionId="${{ secrets.SUBSCRIPTIONID }}"
-        $resourceGroup="${{ vars.UbuntuImageResourceGroup }}"
-        $imageName="Runner-Image-Ubuntu2204"
-        
-        # env for target gallery
-        $newGalleryName="${{ vars.GALERYNAME }}"
-        $newGalleryResourceGroup="${{ vars.GALERYNAME }}"
-        $location="${{ vars.Region }}"
-        $imageDefinition=$imageName
-
-        Write-Host "--------------------------------"
-        Write-Host $newGalleryResourceGroup
-        Write-Host "--------------------------------"
-        Exit (1)
     - name: 'Build Ubuntu 2204 Image'
       shell: pwsh
       run: |
@@ -49,13 +31,13 @@ jobs:
       run: |
         # env for source image
         $subscriptionId="${{ secrets.SUBSCRIPTIONID }}"
-        $resourceGroup="${{ env.UbuntuImageResourceGroup }}"
+        $resourceGroup="${{ vars.UbuntuImageResourceGroup }}"
         $imageName="Runner-Image-Ubuntu2204"
         
         # env for target gallery
-        $newGalleryName="${{ env.GALERYNAME }}"
-        $newGalleryResourceGroup="${{ env.GALERYNAME }}"
-        $location="${{ env.Region }}"
+        $newGalleryName="${{ vars.GALERYNAME }}"
+        $newGalleryResourceGroup="${{ vars.GALERYNAME }}"
+        $location="${{ vars.Region }}"
         $imageDefinition=$imageName
         
         
