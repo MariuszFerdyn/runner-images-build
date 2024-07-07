@@ -1,4 +1,4 @@
-name: Deploy and Build
+name: Build Ubuntu 22.04 Image
 
 on:
   workflow_dispatch
@@ -17,6 +17,24 @@ jobs:
       run: |
         dir
 
+    - name: 'Test Variables'
+      shell: pwsh
+      run: |
+        # env for source image
+        $subscriptionId=${{ secrets.SUBSCRIPTIONID }}
+        $resourceGroup=${{ env.UbuntuImageResourceGroup }}
+        $imageName="Runner-Image-Ubuntu2204"
+        
+        # env for target gallery
+        $newGalleryName=${{ env.GALERYNAME }}
+        $newGalleryResourceGroup=${{ env.GALERYNAME }}
+        $location=${{ env.Region }}
+        $imageDefinition=$imageName
+
+        Write-Host "--------------------------------"
+        Write-Host $newGalleryResourceGroup
+        Write-Host "--------------------------------"
+        Exit (1)
     - name: 'Build Ubuntu 2204 Image'
       shell: pwsh
       run: |
