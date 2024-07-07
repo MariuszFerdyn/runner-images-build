@@ -18,7 +18,7 @@ jobs:
         dir
 
     - name: 'Test Variables'
-      shell: pwsh
+      shell: powershell
       run: |
         # env for source image
         $subscriptionId=${{ secrets.SUBSCRIPTIONID }}
