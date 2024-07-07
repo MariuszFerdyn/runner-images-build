@@ -21,14 +21,14 @@ jobs:
       shell: powershell
       run: |
         # env for source image
-        $subscriptionId=${{ secrets.SUBSCRIPTIONID }}
-        $resourceGroup=${{ env.UbuntuImageResourceGroup }}
+        $subscriptionId="${{ secrets.SUBSCRIPTIONID }}"
+        $resourceGroup="${{ env.UbuntuImageResourceGroup }}"
         $imageName="Runner-Image-Ubuntu2204"
         
         # env for target gallery
-        $newGalleryName=${{ env.GALERYNAME }}
-        $newGalleryResourceGroup=${{ env.GALERYNAME }}
-        $location=${{ env.Region }}
+        $newGalleryName="${{ env.GALERYNAME }}"
+        $newGalleryResourceGroup="${{ env.GALERYNAME }}"
+        $location="${{ env.Region }}"
         $imageDefinition=$imageName
 
         Write-Host "--------------------------------"
@@ -48,14 +48,14 @@ jobs:
       shell: pwsh
       run: |
         # env for source image
-        $subscriptionId=${{ secrets.SUBSCRIPTIONID }}
-        $resourceGroup=${{ env.UbuntuImageResourceGroup }}
+        $subscriptionId="${{ secrets.SUBSCRIPTIONID }}"
+        $resourceGroup="${{ env.UbuntuImageResourceGroup }}"
         $imageName="Runner-Image-Ubuntu2204"
         
         # env for target gallery
-        $newGalleryName=${{ env.GALERYNAME }}
-        $newGalleryResourceGroup=${{ env.GALERYNAME }}
-        $location=${{ env.Region }}
+        $newGalleryName="${{ env.GALERYNAME }}"
+        $newGalleryResourceGroup="${{ env.GALERYNAME }}"
+        $location="${{ env.Region }}"
         $imageDefinition=$imageName
         
         
