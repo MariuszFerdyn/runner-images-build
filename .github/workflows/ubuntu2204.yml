@@ -54,7 +54,7 @@ jobs:
         az sig create --resource-group $newGalleryResourceGroup --gallery-name $newGalleryName --location $location
         
         # Create an image definition in the gallery
-        az sig image-definition create --resource-group $newGalleryResourceGroup --gallery-name $newGalleryName --gallery-image-definition $imageDefinition --os-type Windows --publisher myPublisher --offer myOffer --sku mySku --os-state generalized
+        az sig image-definition create --resource-group $newGalleryResourceGroup --gallery-name $newGalleryName --gallery-image-definition $imageDefinition --os-type Linux --publisher RunnerImage --offer RunnerImage --sku Runner --os-state generalized
         
         # Finally, copy the image to the gallery
         
