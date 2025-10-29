@@ -16,6 +16,19 @@ jobs:
       run: |
         dir
 
+    - name: 'Ensure Resource Group exists'
+      shell: pwsh
+      run: |
+        $subscriptionId="${{ secrets.SUBSCRIPTIONID }}"
+        $resourceGroup="${{ vars.UbuntuImageResourceGroup }}"
+        $location="${{ vars.Region }}"
+        
+        az login --service-principal -u ${{ secrets.APPLICATIONID }} -p ${{ secrets.SECRET }} --tenant ${{ secrets.TENANTID }}
+        az account set --subscription $subscriptionId
+        
+        # Create the resource group if it doesn't exist
+        az group create --name $resourceGroup --location $location
+
     - name: 'Build Ubuntu 2204 Image'
       shell: pwsh
       run: |
