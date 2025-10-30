@@ -72,38 +72,38 @@ jobs:
         
         az sig image-version create --resource-group $newGalleryResourceGroup --gallery-name $newGalleryName --gallery-image-definition $imageDefinition --gallery-image-version 1.0.0 --location $location --managed-image "/subscriptions/$subscriptionId/resourceGroups/$resourceGroup/providers/Microsoft.Compute/images/$imageName"
         
-        # Create storage account name (lowercase)
-        $storageAccountName = "${{ vars.UbuntuImageResourceGroup }}".ToLower() -replace '[^a-z0-9]', ''
-        
-        # Create storage account
-        az storage account create --name $storageAccountName --resource-group $newGalleryResourceGroup --location $location --sku Standard_LRS
-        
-        # Get storage account key
-        $storageKey = az storage account keys list --resource-group $newGalleryResourceGroup --account-name $storageAccountName --query "[0].value" -o tsv
-        
-        # Create container
-        az storage container create --name vhd --account-name $storageAccountName --account-key $storageKey
-        
-        # Export image to VHD
-        # First, get the image ID
-        $imageId = az image show --resource-group $resourceGroup --name $imageName --query "id" -o tsv
-        
-        # Grant access to the image and get SAS URL
-        $sasUrl = az image grant-access --resource-group $resourceGroup --name $imageName --duration-in-seconds 3600 --query "accessSas" -o tsv
-        
-        # Copy VHD to storage account
-        $vhdName = "$imageName.vhd"
-        az storage blob copy start --destination-blob $vhdName --destination-container vhd --account-name $storageAccountName --account-key $storageKey --source-uri $sasUrl
-        
-        # Wait for copy to complete
-        $copyStatus = ""
-        while ($copyStatus -ne "success") {
-            Start-Sleep -Seconds 10
-            $copyStatus = az storage blob show --container-name vhd --name $vhdName --account-name $storageAccountName --account-key $storageKey --query "properties.copy.status" -o tsv
-            Write-Host "Copy status: $copyStatus"
-        }
-        
-        # Revoke access to the image
-        az image revoke-access --resource-group $resourceGroup --name $imageName
-        
-        Write-Host "VHD exported successfully to storage account: $storageAccountName"
+        ## Create storage account name (lowercase)
+        #$storageAccountName = "${{ vars.UbuntuImageResourceGroup }}".ToLower() -replace '[^a-z0-9]', ''
+        #
+        ## Create storage account
+        #az storage account create --name $storageAccountName --resource-group $newGalleryResourceGroup --location $location --sku Standard_LRS
+        #
+        ## Get storage account key
+        #$storageKey = az storage account keys list --resource-group $newGalleryResourceGroup --account-name $storageAccountName --query "[0].value" -o tsv
+        #
+        ## Create container
+        #az storage container create --name vhd --account-name $storageAccountName --account-key $storageKey
+        #
+        ## Export image to VHD
+        ## First, get the image ID
+        #$imageId = az image show --resource-group $resourceGroup --name $imageName --query "id" -o tsv
+        #
+        ## Grant access to the image and get SAS URL
+        #$sasUrl = az image grant-access --resource-group $resourceGroup --name $imageName --duration-in-seconds 3600 --query "accessSas" -o tsv
+        #
+        ## Copy VHD to storage account
+        #$vhdName = "$imageName.vhd"
+        #az storage blob copy start --destination-blob $vhdName --destination-container vhd --account-name $storageAccountName --account-key $storageKey --source-uri $sasUrl
+        #
+        ## Wait for copy to complete
+        #$copyStatus = ""
+        #while ($copyStatus -ne "success") {
+        #    Start-Sleep -Seconds 10
+        #    $copyStatus = az storage blob show --container-name vhd --name $vhdName --account-name $storageAccountName --account-key $storageKey --query "properties.copy.status" -o tsv
+        #    Write-Host "Copy status: $copyStatus"
+        #}
+        #
+        ## Revoke access to the image
+        #az image revoke-access --resource-group $resourceGroup --name $imageName
+        #
+        #Write-Host "VHD exported successfully to storage account: $storageAccountName"
