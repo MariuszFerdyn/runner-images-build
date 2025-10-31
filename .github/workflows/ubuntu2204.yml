@@ -72,38 +72,96 @@ jobs:
         
         az sig image-version create --resource-group $newGalleryResourceGroup --gallery-name $newGalleryName --gallery-image-definition $imageDefinition --gallery-image-version 1.0.0 --location $location --managed-image "/subscriptions/$subscriptionId/resourceGroups/$resourceGroup/providers/Microsoft.Compute/images/$imageName"
         
-        ## Create storage account name (lowercase)
-        #$storageAccountName = "${{ vars.UbuntuImageResourceGroup }}".ToLower() -replace '[^a-z0-9]', ''
-        #
-        ## Create storage account
-        #az storage account create --name $storageAccountName --resource-group $newGalleryResourceGroup --location $location --sku Standard_LRS
-        #
-        ## Get storage account key
-        #$storageKey = az storage account keys list --resource-group $newGalleryResourceGroup --account-name $storageAccountName --query "[0].value" -o tsv
-        #
-        ## Create container
-        #az storage container create --name vhd --account-name $storageAccountName --account-key $storageKey
-        #
-        ## Export image to VHD
-        ## First, get the image ID
-        #$imageId = az image show --resource-group $resourceGroup --name $imageName --query "id" -o tsv
-        #
-        ## Grant access to the image and get SAS URL
-        #$sasUrl = az image grant-access --resource-group $resourceGroup --name $imageName --duration-in-seconds 3600 --query "accessSas" -o tsv
-        #
-        ## Copy VHD to storage account
-        #$vhdName = "$imageName.vhd"
-        #az storage blob copy start --destination-blob $vhdName --destination-container vhd --account-name $storageAccountName --account-key $storageKey --source-uri $sasUrl
-        #
-        ## Wait for copy to complete
-        #$copyStatus = ""
-        #while ($copyStatus -ne "success") {
-        #    Start-Sleep -Seconds 10
-        #    $copyStatus = az storage blob show --container-name vhd --name $vhdName --account-name $storageAccountName --account-key $storageKey --query "properties.copy.status" -o tsv
-        #    Write-Host "Copy status: $copyStatus"
-        #}
-        #
-        ## Revoke access to the image
-        #az image revoke-access --resource-group $resourceGroup --name $imageName
-        #
-        #Write-Host "VHD exported successfully to storage account: $storageAccountName"
+        # Create storage account name (lowercase)
+        $storageAccountName = "DevOpsPackerAgentvUbuntu2204".ToLower() -replace '[^a-z]', ''
+        $imageName="Runner-Image-Ubuntu2204"
+                
+        # env for target gallery
+        $imageDefinition=$imageName
+        
+        # Create storage account
+        az storage account create --name $storageAccountName --resource-group $newGalleryResourceGroup --location $location --sku Standard_LRS
+        
+        # Get storage account key
+        $storageKey = az storage account keys list --resource-group $newGalleryResourceGroup --account-name $storageAccountName --query "[0].value" -o tsv
+        
+        # Create container
+        az storage container create --name vhd --account-name $storageAccountName --account-key $storageKey
+        
+        
+        # Get the latest image version from the gallery
+        $latestImageVersion = az sig image-version list `
+            --resource-group $newGalleryResourceGroup `
+            --gallery-name $newGalleryName `
+            --gallery-image-definition $imageDefinition `
+            --query "[-1].name" -o tsv
+        
+        Write-Host "Latest image version: $latestImageVersion"
+        
+        # Create managed disk from gallery image
+        $diskName = "$imageName-disk-$(Get-Date -Format 'yyyyMMddHHmmss')"
+        Write-Host "Creating managed disk: $diskName"
+        
+        az disk create `
+            --resource-group $resourceGroup `
+            --name $diskName `
+            --location $location `
+            --gallery-image-reference "/subscriptions/$subscriptionId/resourceGroups/$newGalleryResourceGroup/providers/Microsoft.Compute/galleries/$newGalleryName/images/$imageDefinition/versions/$latestImageVersion"
+        
+        # Grant access to the disk and get SAS URL (valid for 10 hour for export)
+        Write-Host "Granting access to disk for export..."
+        $diskSasUrl = az disk grant-access `
+            --resource-group $resourceGroup `
+            --name $diskName `
+            --duration-in-seconds 36000 `
+            --query "accessSas" -o tsv
+        
+        # Export disk to storage account
+        $vhdBlobName = "$diskName.vhd"
+        Write-Host "Exporting disk to storage account as: $vhdBlobName"
+        
+        $escapedDiskSasUrl = $diskSasUrl -replace '&', '`&'
+        az storage blob copy start --destination-container vhd --destination-blob $vhdBlobName --account-name $storageAccountName --account-key $storageKey --source-uri '$diskSasUrl'
+        
+        # Wait for copy to complete
+        Write-Host "Waiting for copy operation to complete..."
+        do {
+            $copyStatus = az storage blob show --container-name vhd --name $vhdBlobName --account-name $storageAccountName --account-key $storageKey --query "properties.copy.status" -o tsv
+            
+            Write-Host "Copy status: $copyStatus"
+            if ($copyStatus -ne "success") {
+                Start-Sleep -Seconds 30
+            }
+        } while ($copyStatus -ne "success")
+        
+        # Revoke disk access
+        Write-Host "Revoking disk access..."
+        az disk revoke-access --resource-group $resourceGroup --name $diskName
+        az disk delete --resource-group $resourceGroup --name $diskName
+        
+        
+        # Generate SAS token for VHD (7 days expiration)
+        $expiryDate = (Get-Date).AddDays(7).ToString("yyyy-MM-ddTHH:mm:ssZ")
+        Write-Host "Generating SAS token (expires: $expiryDate)..."
+        
+        $sasToken = az storage blob generate-sas `
+            --container-name vhd `
+            --name $vhdBlobName `
+            --account-name $storageAccountName `
+            --account-key $storageKey `
+            --permissions r `
+            --expiry $expiryDate `
+            --https-only `
+            -o tsv
+        
+        # Construct full URL with SAS token
+        $vhdUrlWithSas = "https://$storageAccountName.blob.core.windows.net/vhd/$vhdBlobName?$sasToken"
+        
+        Write-Host "`n========================================="
+        Write-Host "VHD Export Complete!"
+        Write-Host "========================================="
+        Write-Host "VHD Blob Name: $vhdBlobName"
+        Write-Host "SAS Token (7 days): $sasToken"
+        Write-Host "`nFull URL with SAS:"
+        Write-Host $vhdUrlWithSas
+        Write-Host "=========================================`n"
