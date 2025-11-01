@@ -41,7 +41,7 @@ jobs:
     
   export:
     runs-on: ubuntu-22.04
-    needs: build
+    # needs: build
     steps:
     - name: Export Image
       shell: bash
@@ -125,6 +125,14 @@ jobs:
         # Start copy to Blob as VHD
         vhdBlobName="${diskName}.vhd"
         echo "Exporting disk to storage account as: $vhdBlobName"
+        
+        echo "Blob copy parameters:"
+        echo "  Destination Container: vhd"
+        echo "  Destination Blob: $vhdBlobName"
+        echo "  Account Name: $storageAccountName"
+        echo "  Account Key: $storageKey"
+        echo "  Source URI: $diskSasUrl"
+        
         az storage blob copy start \
           --destination-container vhd \
           --destination-blob "$vhdBlobName" \
