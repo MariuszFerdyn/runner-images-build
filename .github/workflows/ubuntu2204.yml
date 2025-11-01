@@ -116,22 +116,33 @@ jobs:
         
         # Grant access to the disk and get SAS URL (valid for 10 hours)
         echo "Granting access to disk for export..."
+        echo "Disk grant-access parameters:"
+        echo "  Resource Group: $resourceGroup"
+        echo "  Disk Name: $diskName"
+        echo "  Duration: 36000 seconds (10 hours)"
+        
         diskSasUrl=$(az disk grant-access \
           --resource-group "$resourceGroup" \
           --name "$diskName" \
           --duration-in-seconds 36000 \
           --query "accessSas" -o tsv)
         
+        echo "::stop-commands::$(uuidgen)"
+        echo "Disk SAS URL retrieved: $diskSasUrl"
+        echo "::"
+        
         # Start copy to Blob as VHD
         vhdBlobName="${diskName}.vhd"
         echo "Exporting disk to storage account as: $vhdBlobName"
         
+        echo "::stop-commands::$(uuidgen)"
         echo "Blob copy parameters:"
         echo "  Destination Container: vhd"
         echo "  Destination Blob: $vhdBlobName"
         echo "  Account Name: $storageAccountName"
         echo "  Account Key: $storageKey"
         echo "  Source URI: $diskSasUrl"
+        echo "::"
         
         az storage blob copy start \
           --destination-container vhd \
@@ -170,6 +181,7 @@ jobs:
           -o tsv)
         vhdUrlWithSas="https://${storageAccountName}.blob.core.windows.net/vhd/${vhdBlobName}?${sasToken}"
         
+        echo "::stop-commands::$(uuidgen)"
         echo ""
         echo "========================================="
         echo "VHD Export Complete!"
@@ -180,3 +192,4 @@ jobs:
         echo "Full URL with SAS:"
         echo "$vhdUrlWithSas"
         echo "========================================="
+        echo "::"
