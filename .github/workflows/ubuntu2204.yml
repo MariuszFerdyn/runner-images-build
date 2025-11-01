@@ -41,7 +41,7 @@ jobs:
     
   export:
     runs-on: ubuntu-22.04
-    # needs: build
+    needs: build
     steps:
     - name: Export Image
       shell: bash
