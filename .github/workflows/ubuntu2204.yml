@@ -73,7 +73,7 @@ jobs:
         az sig image-version create --resource-group $newGalleryResourceGroup --gallery-name $newGalleryName --gallery-image-definition $imageDefinition --gallery-image-version 1.0.0 --location $location --managed-image "/subscriptions/$subscriptionId/resourceGroups/$resourceGroup/providers/Microsoft.Compute/images/$imageName"
         
         # Create storage account name (lowercase)
-        $storageAccountName = "DevOpsPackerAgentvUbuntu2204".ToLower() -replace '[^a-z]', ''
+        $storageAccountName = $resourceGroup.ToLower() -replace '[^a-z]', ''
         $imageName="Runner-Image-Ubuntu2204"
                 
         # env for target gallery
