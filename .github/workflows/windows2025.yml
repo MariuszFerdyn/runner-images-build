@@ -70,18 +70,38 @@ jobs:
         az sig create --resource-group "$newGalleryResourceGroup" --gallery-name "$newGalleryName" --location "$location" 2>/dev/null || echo "Gallery already exists"
         
         # Ensure image definition exists (idempotent - will succeed if already exists)
+        echo "Image definition parameters:"
+        echo "  Hyper-V Generation: v1"
+        echo "  Resource Group: $newGalleryResourceGroup"
+        echo "  Gallery Name: $newGalleryName"
+        echo "  Image Definition: $imageDefinition"
+        echo "  OS Type: Windows"
+        echo "  Publisher: RunnerImage"
+        echo "  Offer: WindowsImage"
+        echo "  SKU: 2025"
+        echo "  OS State: generalized"
+        
         az sig image-definition create \
-          --hyper-v-generation v2 \
+          --hyper-v-generation v1 \
           --resource-group "$newGalleryResourceGroup" \
           --gallery-name "$newGalleryName" \
           --gallery-image-definition "$imageDefinition" \
           --os-type Windows \
           --publisher RunnerImage \
-          --offer RunnerImage \
-          --sku Runner \
-          --os-state generalized 2>/dev/null || echo "Image definition already exists"
+          --offer WindowsImage \
+          --sku 2025 \
+          --os-state generalized
+
         
         # Publish image version into the gallery from the managed image
+        echo "Image version creation parameters:"
+        echo "  Resource Group: $newGalleryResourceGroup"
+        echo "  Gallery Name: $newGalleryName"
+        echo "  Image Definition: $imageDefinition"
+        echo "  Gallery Image Version: 1.0.0"
+        echo "  Location: $location"
+        echo "  Managed Image: /subscriptions/$subscriptionId/resourceGroups/$resourceGroup/providers/Microsoft.Compute/images/$imageName"
+        
         az sig image-version create \
           --resource-group "$newGalleryResourceGroup" \
           --gallery-name "$newGalleryName" \

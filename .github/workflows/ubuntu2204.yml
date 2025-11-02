@@ -75,8 +75,8 @@ jobs:
           --gallery-image-definition "$imageDefinition" \
           --os-type Linux \
           --publisher RunnerImage \
-          --offer RunnerImage \
-          --sku Runner \
+          --offer UbuntuImage \
+          --sku 2204 \
           --os-state generalized
         
         # Publish image version into the gallery from the managed image
