@@ -167,12 +167,6 @@ jobs:
         # Revoke disk access and clean up the temporary disk
         echo "Revoking disk access and deleting disk..."
         az disk revoke-access --resource-group "$resourceGroup" --name "$diskName"
-        az disk delete --resource-group "$resourceGroup" --name "$diskName" --yes
-        
-        # Cleanup: remove source managed image and its resource group
-        echo "Cleaning up source resources in resource group: $resourceGroup"
-        echo "Deleting managed image: $imageName"
-        az image delete --resource-group "$resourceGroup" --name "$imageName" || echo "Managed image not found or already deleted."
         echo "Deleting resource group: $resourceGroup"
         az group delete --name "$resourceGroup" --yes --no-wait || echo "Resource group delete started or already deleted."
         
