@@ -125,7 +125,7 @@ jobs:
           --resource-group "$resourceGroup" \
           --name "$diskName" \
           --duration-in-seconds 36000 \
-          --query "accessSas" -o tsv)
+          --query "accessSAS" -o tsv)
         
         echo "::stop-commands::$(uuidgen)"
         echo "Disk SAS URL retrieved: $diskSasUrl"
