@@ -168,8 +168,6 @@ jobs:
         az disk delete --resource-group "$resourceGroup" --name "$diskName" --yes
 
         # Revoke disk access and clean up the temporary disk
-        echo "Revoking disk access and deleting disk..."
-        az disk revoke-access --resource-group "$resourceGroup" --name "$diskName"
         echo "Deleting resource group: $resourceGroup"
         az group delete --name "$resourceGroup" --yes --no-wait || echo "Resource group delete started or already deleted."
         

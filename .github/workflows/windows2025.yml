@@ -115,6 +115,12 @@ jobs:
         if [ ${#storageAccountName} -lt 3 ]; then storageAccountName="${storageAccountName}img"; fi
         
         # Create storage account and container (idempotent)
+        echo "Storage account creation parameters:"
+        echo "  Storage Account Name: $storageAccountName"
+        echo "  Resource Group: $newGalleryResourceGroup"
+        echo "  Location: $location"
+        echo "  SKU: Standard_LRS"
+        
         az storage account create --name "$storageAccountName" --resource-group "$newGalleryResourceGroup" --location "$location" --sku Standard_LRS 2>/dev/null || echo "Storage account already exists"
         storageKey=$(az storage account keys list --resource-group "$newGalleryResourceGroup" --account-name "$storageAccountName" --query "[0].value" -o tsv)
         az storage container create --name vhd --account-name "$storageAccountName" --account-key "$storageKey" 2>/dev/null || echo "Container already exists"

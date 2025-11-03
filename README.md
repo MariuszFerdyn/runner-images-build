@@ -1,34 +1,49 @@
 # runner-images-build
 
-Build and publish a ready-to-use Linux runner image (DevOps Agent base) to Azure. The workflow produces:
+Build and publish ready-to-use Linux and Windows runner images (Agents).
 
-- A versioned image in an Azure Compute Gallery (SIG)
-- A VHD exported to Azure Storage for direct VM creation or lift-and-shift
+The build process uses Azure infrastructure, then stores the resulting VHD in a Storage Account where you can download it and use it anywhere:
 
-This image contains the rich toolset from the official GitHub Actions runner images project, making it easy to host self‑hosted runners for:
+- **Azure**: Create VMs/VMSS from the gallery or import the VHD
+- **On-Premise**: Download the VHD and deploy to your local virtualization infrastructure
+- **AWS**: Import the VHD to create EC2 AMIs
+- **GCP**: Import the VHD to create Compute Engine images
+- **Workstations**: Use the VHD to build powerful development workstations with all tools preinstalled
+
+These images contain the rich toolset from the official GitHub Actions runner images project, making it easy to host self‑hosted runners for:
 
 - GitHub Actions
 - Azure DevOps Pipelines
 - Bitbucket Pipelines (self‑hosted)
 
-You get an image that already includes a broad set of preinstalled software (compilers, SDKs, CLIs, build tools, etc.) so you only add the runner/agent bootstrap you need.
+You get images that already include a broad set of preinstalled software (compilers, SDKs, CLIs, build tools, etc.) so you only add the runner/agent bootstrap you need.
 
-> Source of preinstalled software: the upstream GitHub Actions image build scripts (formerly `actions/virtual-environments`, now `actions/runner-images`). This repo leverages those scripts to create an Ubuntu 22.04 image.
+> Source of preinstalled software: the upstream GitHub Actions image build scripts (formerly [`actions/virtual-environments`](https://github.com/actions/virtual-environments), now [`actions/runner-images`](https://github.com/actions/runner-images)). This repo leverages those scripts to create Ubuntu 22.04 and Windows 2025 images.
 
 ## What this repository does
 
-The workflow in `.github/workflows/ubuntu2204.yml`:
+The workflows in `.github/workflows/`:
 
+**ubuntu2204.yml** - Ubuntu 22.04 Image:
 1. Builds an Ubuntu 22.04 image using the upstream runner image scripts
 2. Publishes that image to an Azure Compute Gallery (SIG)
 3. Creates an Azure Storage account and a `vhd` container
 4. Exports the image as a VHD into that container and prints a temporary SAS link
-5. Optionally cleans up the source resource group
+5. Cleans up the source resource group
+
+**windows2025.yml** - Windows 2025 Image:
+1. Builds a Windows 2025 image using the upstream runner image scripts
+2. Publishes that image to the same Azure Compute Gallery (SIG)
+3. Creates an Azure Storage account and a `vhd` container
+4. Exports the image as a VHD into that container and prints a temporary SAS link
+5. Cleans up the source resource group
+
+Both workflows share the same gallery but create separate image definitions and use separate storage accounts.
 
 ## Outputs you can use
 
-- Azure Compute Gallery image: ideal for creating VMs/VMSS at scale with versioning
-- VHD in Blob Storage: usable for custom image creation, on‑prem scenarios, or migration paths
+- **Azure Compute Gallery image**: ideal for creating VMs/VMSS at scale with versioning within Azure
+- **VHD in Blob Storage**: downloadable and portable - use it to create custom images in Azure, import to AWS/GCP, deploy on-premise, or build development workstations
 
 ## Preinstalled software (high level)
 
@@ -43,7 +58,7 @@ For the authoritative and always‑up‑to‑date list, see the upstream project
 
 ## Configure
 
-Set these GitHub repository Secrets and Variables before running the workflow.
+Set these GitHub repository Secrets and Variables before running the workflows.
 
 Secrets:
 - `SUBSCRIPTIONID` – Azure Subscription ID
@@ -52,33 +67,39 @@ Secrets:
 - `TENANTID` – Azure AD Tenant ID
 
 Variables (Repository variables):
-- `UbuntuImageResourceGroup` – Resource group that holds the managed image (source)
-- `GALERYNAME` – Azure Compute Gallery name (target)
+- `UbuntuImageResourceGroup` – Resource group for Ubuntu managed image (source)
+- `WINDOWSIMAGERESOURCEGROUP` – Resource group for Windows managed image (source)
+- `GALERYNAME` – Azure Compute Gallery name (shared target for both images)
 - `Region` – Azure region (e.g., `westeurope`)
 
 Notes:
-- The workflow will ensure the gallery resource group exists (same name as `GALERYNAME`).
-- The storage account name is derived from `UbuntuImageResourceGroup` (lower‑cased, alphanumeric, <= 24 chars), and a `vhd` container is created.
+- The workflows will ensure the gallery resource group exists (same name as `GALERYNAME`).
+- Each workflow creates its own storage account derived from its respective resource group name (lower‑cased, alphanumeric, <= 24 chars), with a `vhd` container.
+- Both workflows share the same gallery but create separate image definitions:
+  - Ubuntu: `Runner-Image-Ubuntu2204`
+  - Windows: `Runner-Image-Windows2025`
 
 ## Run the workflow
 
-1. Go to Actions → “Build Ubuntu 22.04 Image” → Run workflow.
-2. By default it runs two jobs:
-	 - `build` (Windows): compiles the Ubuntu image using upstream scripts
-	 - `export` (Linux): publishes to SIG and exports a VHD to Blob Storage
-3. To run only the export job, comment out the `needs: build` line in the `export` job (already prepared in the workflow comments) and trigger the workflow.
+1. Go to Actions → Select either "Build Ubuntu 22.04 Image" or "Build Windows 2025 Image" → Run workflow.
+2. By default each workflow runs two jobs:
+   - `build` (Windows runner): compiles the image using upstream scripts
+   - `export` (Linux runner): publishes to SIG and exports a VHD to Blob Storage
+3. To run only the export job, comment out the `needs: build` line in the `export` job and trigger the workflow.
+
+Both workflows can run independently and share the same gallery without conflicts.
 
 ## Use the image for runners/agents
 
 Choose one of these consumption options:
 
 - From Azure Compute Gallery
-	- Create a VM or VM Scale Set from the published gallery image version
-	- Add your bootstrap to install and configure the runner/agent on first boot (cloud-init, Custom Script Extension)
+  - Create a VM or VM Scale Set from the published gallery image version (Ubuntu or Windows)
+  - Add your bootstrap to install and configure the runner/agent on first boot (cloud-init for Linux, Custom Script Extension for Windows)
 
 - From VHD in Blob Storage
-	- Use the generated SAS URL (temporary) to copy/import the VHD into your target subscription and create a managed disk and VM
-	- Attach a provisioning script to install the GitHub Actions runner, Azure Pipelines agent, or Bitbucket runner at startup
+  - Use the generated SAS URL (temporary) to copy/import the VHD into your target subscription and create a managed disk and VM
+  - Attach a provisioning script to install the GitHub Actions runner, Azure Pipelines agent, or Bitbucket runner at startup
 
 Typical bootstrap (high level):
 
@@ -86,9 +107,7 @@ Typical bootstrap (high level):
 - Azure DevOps: download Azure Pipelines agent, configure with your org/project/pool, and install as a service
 - Bitbucket: set up the Bitbucket runner on the VM and register it to your workspace/repo
 
-The image already has the toolchain; you only need the small agent install script appropriate for your platform.
-
-## Security considerations
+The images already have the toolchain; you only need the small agent install script appropriate for your platform and OS.## Security considerations
 
 - The workflow deliberately prints sensitive values (SAS URLs, storage account key) for debugging and portability. Secret masking is temporarily disabled around those lines using GitHub Actions `::stop-commands::`. Anyone with access to the workflow logs can see them while valid.
 - SAS tokens expire (10 hours for disk SAS, 7 days for VHD SAS in this workflow), but treat logs as sensitive.
@@ -96,13 +115,19 @@ The image already has the toolchain; you only need the small agent install scrip
 
 ## Cleanup
 
-The export job can optionally delete the source managed image and the entire resource group where it lived. This helps minimize costs once the image has been published to the gallery and exported to the storage account.
+Each export job can optionally delete the source managed image and the entire resource group where it lived. This helps minimize costs once the image has been published to the gallery and exported to the storage account.
+
+- Ubuntu workflow cleans up `UbuntuImageResourceGroup`
+- Windows workflow cleans up `WINDOWSIMAGERESOURCEGROUP`
+
+The shared gallery and its images remain intact.
 
 ## Troubleshooting
 
-- If the storage account name derived from `UbuntuImageResourceGroup` is shorter than 3 characters, the workflow appends `img`.
+- If the storage account name derived from `UbuntuImageResourceGroup` or `WINDOWSIMAGERESOURCEGROUP` is shorter than 3 characters, the workflow appends `img`.
 - If the `export` job is all you need (e.g., re‑publishing), run it alone by removing the `needs: build` dependency.
 - Ensure your Service Principal has permissions on both the source and target resource groups.
+- Both workflows use idempotent operations for gallery and storage account creation, so they won't fail if resources already exist.
 
 ## License
 
