@@ -1,4 +1,4 @@
-name: Build Ubuntu 24.04 Image
+name: Build Ubuntu 24.04 Gen2 Image
 
 on:
   workflow_dispatch
