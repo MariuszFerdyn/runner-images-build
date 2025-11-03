@@ -35,7 +35,7 @@ jobs:
         git clone https://github.com/MariuszFerdyn/virtual-environments.git
         cd ./virtual-environments
         Import-Module .\helpers\GenerateResourcesAndImage.ps1
-        GenerateResourcesAndImage -SubscriptionId ${{ secrets.SUBSCRIPTIONID }} -ResourceGroupName ${{ vars.UbuntuImageResourceGroup }} -ImageGenerationRepositoryRoot "$pwd" -ImageType Ubuntu2404-gen2 -AzureLocation ${{ vars.Region }} -AzureClientId ${{ secrets.APPLICATIONID }} -AzureClientSecret ${{ secrets.SECRET }} -AzureTenantId ${{ secrets.TENANTID }}
+        GenerateResourcesAndImage -SubscriptionId ${{ secrets.SUBSCRIPTIONID }} -ResourceGroupName ${{ vars.UbuntuImageResourceGroup }} -ImageGenerationRepositoryRoot "$pwd" -ImageType Ubuntu2404Gen2 -AzureLocation ${{ vars.Region }} -AzureClientId ${{ secrets.APPLICATIONID }} -AzureClientSecret ${{ secrets.SECRET }} -AzureTenantId ${{ secrets.TENANTID }}
 
 
     
