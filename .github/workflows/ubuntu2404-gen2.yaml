@@ -1,0 +1,199 @@
+name: Build Ubuntu 24.04 Image
+
+on:
+  workflow_dispatch
+
+jobs:
+  build:
+    runs-on: windows-2022
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: 'Navigate to Workspace'
+      run: cd $GITHUB_WORKSPACE
+
+    - name: 'dir just for debug'
+      run: |
+        dir
+
+    - name: 'Ensure Resource Group exists'
+      shell: pwsh
+      run: |
+        $subscriptionId="${{ secrets.SUBSCRIPTIONID }}"
+        $resourceGroup="${{ vars.UbuntuImageResourceGroup }}"
+        $location="${{ vars.Region }}"
+        
+        az login --service-principal -u ${{ secrets.APPLICATIONID }} -p ${{ secrets.SECRET }} --tenant ${{ secrets.TENANTID }}
+        az account set --subscription $subscriptionId
+        
+        # Create the resource group if it doesn't exist
+        az group create --name $resourceGroup --location $location
+
+    - name: 'Build Ubuntu 2404 Image'
+      shell: pwsh
+      run: |
+        git clone https://github.com/MariuszFerdyn/virtual-environments.git
+        cd ./virtual-environments
+        Import-Module .\helpers\GenerateResourcesAndImage.ps1
+        GenerateResourcesAndImage -SubscriptionId ${{ secrets.SUBSCRIPTIONID }} -ResourceGroupName ${{ vars.UbuntuImageResourceGroup }} -ImageGenerationRepositoryRoot "$pwd" -ImageType Ubuntu2404-gen2 -AzureLocation ${{ vars.Region }} -AzureClientId ${{ secrets.APPLICATIONID }} -AzureClientSecret ${{ secrets.SECRET }} -AzureTenantId ${{ secrets.TENANTID }}
+
+
+    
+  export:
+    runs-on: ubuntu-22.04
+    needs: build
+    steps:
+    - name: Export Image
+      shell: bash
+      run: |
+        set -euo pipefail
+        
+        # Source parameters
+        subscriptionId="${{ secrets.SUBSCRIPTIONID }}"
+        resourceGroup="${{ vars.UbuntuImageResourceGroup }}"
+        imageName="Runner-Image-Ubuntu2404"
+        
+        # Target gallery parameters
+        newGalleryName="${{ vars.GALERYNAME }}"
+        newGalleryResourceGroup="${{ vars.GALERYNAME }}"
+        location="${{ vars.Region }}"
+        imageDefinition="$imageName"
+        
+        # Azure login and subscription context
+        az login --service-principal -u "${{ secrets.APPLICATIONID }}" -p "${{ secrets.SECRET }}" --tenant "${{ secrets.TENANTID }}"
+        az account set --subscription "$subscriptionId"
+        
+        # Ensure gallery resource group exists
+        az group create --name "$newGalleryResourceGroup" --location "$location"
+        
+        # Ensure SIG and image definition exist
+        az sig create --resource-group "$newGalleryResourceGroup" --gallery-name "$newGalleryName" --location "$location"
+        az sig image-definition create \
+          --hyper-v-generation v2 \
+          --resource-group "$newGalleryResourceGroup" \
+          --gallery-name "$newGalleryName" \
+          --gallery-image-definition "$imageDefinition" \
+          --os-type Linux \
+          --publisher RunnerImage \
+          --offer UbuntuImage \
+          --sku 2404 \
+          --os-state generalized
+        
+        # Publish image version into the gallery from the managed image
+        az sig image-version create \
+          --resource-group "$newGalleryResourceGroup" \
+          --gallery-name "$newGalleryName" \
+          --gallery-image-definition "$imageDefinition" \
+          --gallery-image-version 1.0.0 \
+          --location "$location" \
+          --managed-image "/subscriptions/$subscriptionId/resourceGroups/$resourceGroup/providers/Microsoft.Compute/images/$imageName"
+        
+        # Storage account name based on resource group (lowercase, alphanumeric, max 24 chars)
+        storageAccountName=$(echo -n "$resourceGroup" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9' | cut -c1-24)
+        if [ ${#storageAccountName} -lt 3 ]; then storageAccountName="${storageAccountName}img"; fi
+        
+        # Create storage account and container
+        az storage account create --name "$storageAccountName" --resource-group "$newGalleryResourceGroup" --location "$location" --sku Standard_LRS
+        storageKey=$(az storage account keys list --resource-group "$newGalleryResourceGroup" --account-name "$storageAccountName" --query "[0].value" -o tsv)
+        az storage container create --name vhd --account-name "$storageAccountName" --account-key "$storageKey"
+        
+        # Find latest image version
+        latestImageVersion=$(az sig image-version list \
+          --resource-group "$newGalleryResourceGroup" \
+          --gallery-name "$newGalleryName" \
+          --gallery-image-definition "$imageDefinition" \
+          --query "[-1].name" -o tsv)
+        echo "Latest image version: $latestImageVersion"
+        
+        # Create managed disk from gallery image version
+        diskName="${imageName}-disk-$(date -u +%Y%m%d%H%M%S)"
+        echo "Creating managed disk: $diskName"
+        az disk create \
+          --resource-group "$resourceGroup" \
+          --name "$diskName" \
+          --location "$location" \
+          --gallery-image-reference "/subscriptions/$subscriptionId/resourceGroups/$newGalleryResourceGroup/providers/Microsoft.Compute/galleries/$newGalleryName/images/$imageDefinition/versions/$latestImageVersion"
+        
+        # Grant access to the disk and get SAS URL (valid for 10 hours)
+        echo "Granting access to disk for export..."
+        echo "Disk grant-access parameters:"
+        echo "  Resource Group: $resourceGroup"
+        echo "  Disk Name: $diskName"
+        echo "  Duration: 36000 seconds (10 hours)"
+        
+        diskSasUrl=$(az disk grant-access \
+          --resource-group "$resourceGroup" \
+          --name "$diskName" \
+          --duration-in-seconds 36000 \
+          --query "accessSAS" -o tsv)
+        
+        echo "::stop-commands::$(uuidgen)"
+        echo "Disk SAS URL retrieved: $diskSasUrl"
+        echo "::"
+        
+        # Start copy to Blob as VHD
+        vhdBlobName="${diskName}.vhd"
+        echo "Exporting disk to storage account as: $vhdBlobName"
+        
+        echo "::stop-commands::$(uuidgen)"
+        echo "Blob copy parameters:"
+        echo "  Destination Container: vhd"
+        echo "  Destination Blob: $vhdBlobName"
+        echo "  Account Name: $storageAccountName"
+        echo "  Account Key: $storageKey"
+        echo "  Source URI: $diskSasUrl"
+        echo "::"
+        
+        az storage blob copy start \
+          --destination-container vhd \
+          --destination-blob "$vhdBlobName" \
+          --account-name "$storageAccountName" \
+          --account-key "$storageKey" \
+          --source-uri "$diskSasUrl"
+        
+        # Poll for copy completion
+        echo "Waiting for copy operation to complete..."
+        while true; do
+          copyStatus=$(az storage blob show --container-name vhd --name "$vhdBlobName" --account-name "$storageAccountName" --account-key "$storageKey" --query "properties.copy.status" -o tsv)
+          echo "Copy status: $copyStatus"
+          if [ "$copyStatus" = "success" ]; then
+            break
+          fi
+          sleep 30
+        done
+        
+        # Revoke disk access and clean up the temporary disk
+        echo "Revoking disk access and deleting disk..."
+        az disk revoke-access --resource-group "$resourceGroup" --name "$diskName"
+        az disk delete --resource-group "$resourceGroup" --name "$diskName" --yes
+
+        # Revoke disk access and clean up the temporary disk
+        echo "Deleting resource group: $resourceGroup"
+        az group delete --name "$resourceGroup" --yes --no-wait || echo "Resource group delete started or already deleted."
+        
+        # Generate SAS token for VHD (7 days expiration)
+        expiryDate=$(date -u -d "+7 days" "+%Y-%m-%dT%H:%M:%SZ")
+        echo "Generating SAS token (expires: $expiryDate)..."
+        sasToken=$(az storage blob generate-sas \
+          --container-name vhd \
+          --name "$vhdBlobName" \
+          --account-name "$storageAccountName" \
+          --account-key "$storageKey" \
+          --permissions r \
+          --expiry "$expiryDate" \
+          --https-only \
+          -o tsv)
+        vhdUrlWithSas="https://${storageAccountName}.blob.core.windows.net/vhd/${vhdBlobName}?${sasToken}"
+        
+        echo "::stop-commands::$(uuidgen)"
+        echo ""
+        echo "========================================="
+        echo "VHD Export Complete!"
+        echo "========================================="
+        echo "VHD Blob Name: $vhdBlobName"
+        echo "SAS Token (7 days): $sasToken"
+        echo ""
+        echo "Full URL with SAS:"
+        echo "$vhdUrlWithSas"
+        echo "========================================="
+        echo "::"
