@@ -22,12 +22,14 @@ jobs:
         $subscriptionId="${{ secrets.SUBSCRIPTIONID }}"
         $resourceGroup="${{ vars.UbuntuImageResourceGroup }}"
         $location="${{ vars.Region }}"
+        $newGalleryResourceGroup="${{ vars.GALERYNAME }}"
         
         az login --service-principal -u ${{ secrets.APPLICATIONID }} -p ${{ secrets.SECRET }} --tenant ${{ secrets.TENANTID }}
         az account set --subscription $subscriptionId
         
         # Create the resource group if it doesn't exist
         az group create --name $resourceGroup --location $location
+        az group create --name $newGalleryResourceGroup --location "$location"
 
     - name: 'Build Ubuntu 2404 Image'
       shell: pwsh
@@ -35,6 +37,11 @@ jobs:
         git clone https://github.com/MariuszFerdyn/virtual-environments.git
         cd ./virtual-environments
         Import-Module .\helpers\GenerateResourcesAndImage.ps1
+        $env:GALLERY_NAME = "${{ vars.GALERYNAME }}"
+        $env:GALLERY_RG_NAME = "${{ vars.GALERYNAME }}"
+        $env:GALLERY_IMAGE_NAME = "Ubuntu2404-Gen2"
+        $env:GALLERY_IMAGE_VERSION = "1.0.0"
+        $env:GALLERY_STORAGE_ACCOUNT_TYPE = "Standard_LRS"
         GenerateResourcesAndImage -SubscriptionId ${{ secrets.SUBSCRIPTIONID }} -ResourceGroupName ${{ vars.UbuntuImageResourceGroup }} -ImageGenerationRepositoryRoot "$pwd" -ImageType Ubuntu2404Gen2 -AzureLocation ${{ vars.Region }} -AzureClientId ${{ secrets.APPLICATIONID }} -AzureClientSecret ${{ secrets.SECRET }} -AzureTenantId ${{ secrets.TENANTID }}
 
 
@@ -63,30 +70,30 @@ jobs:
         az login --service-principal -u "${{ secrets.APPLICATIONID }}" -p "${{ secrets.SECRET }}" --tenant "${{ secrets.TENANTID }}"
         az account set --subscription "$subscriptionId"
         
-        # Ensure gallery resource group exists
-        az group create --name "$newGalleryResourceGroup" --location "$location"
+        ## Ensure gallery resource group exists
+        #az group create --name "$newGalleryResourceGroup" --location "$location"
         
-        # Ensure SIG and image definition exist
-        az sig create --resource-group "$newGalleryResourceGroup" --gallery-name "$newGalleryName" --location "$location"
-        az sig image-definition create \
-          --hyper-v-generation v2 \
-          --resource-group "$newGalleryResourceGroup" \
-          --gallery-name "$newGalleryName" \
-          --gallery-image-definition "$imageDefinition" \
-          --os-type Linux \
-          --publisher RunnerImage \
-          --offer UbuntuImage \
-          --sku 2404 \
-          --os-state generalized
+        ## Ensure SIG and image definition exist
+        #az sig create --resource-group "$newGalleryResourceGroup" --gallery-name "$newGalleryName" --location "$location"
+        #az sig image-definition create \
+        #  --hyper-v-generation v2 \
+        #  --resource-group "$newGalleryResourceGroup" \
+        #  --gallery-name "$newGalleryName" \
+        #  --gallery-image-definition "$imageDefinition" \
+        #  --os-type Linux \
+        #  --publisher RunnerImage \
+        #  --offer UbuntuImage \
+        #  --sku 2404 \
+        #  --os-state generalized
         
-        # Publish image version into the gallery from the managed image
-        az sig image-version create \
-          --resource-group "$newGalleryResourceGroup" \
-          --gallery-name "$newGalleryName" \
-          --gallery-image-definition "$imageDefinition" \
-          --gallery-image-version 1.0.0 \
-          --location "$location" \
-          --managed-image "/subscriptions/$subscriptionId/resourceGroups/$resourceGroup/providers/Microsoft.Compute/images/$imageName"
+        ## Publish image version into the gallery from the managed image
+        #az sig image-version create \
+        #  --resource-group "$newGalleryResourceGroup" \
+        #  --gallery-name "$newGalleryName" \
+        #  --gallery-image-definition "$imageDefinition" \
+        #  --gallery-image-version 1.0.0 \
+        #  --location "$location" \
+        #  --managed-image "/subscriptions/$subscriptionId/resourceGroups/$resourceGroup/providers/Microsoft.Compute/images/$imageName"
         
         # Storage account name based on resource group (lowercase, alphanumeric, max 24 chars)
         storageAccountName=$(echo -n "$resourceGroup" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9' | cut -c1-24)
