@@ -68,7 +68,23 @@ jobs:
         az group create --name "$newGalleryResourceGroup" --location "$location"
         
         # Ensure SIG and image definition exist
+        echo "Creating Shared Image Gallery..."
+        echo "  Resource Group: $newGalleryResourceGroup"
+        echo "  Gallery Name: $newGalleryName"
+        echo "  Location: $location"
         az sig create --resource-group "$newGalleryResourceGroup" --gallery-name "$newGalleryName" --location "$location"
+        
+        echo ""
+        echo "Creating Image Definition..."
+        echo "  Resource Group: $newGalleryResourceGroup"
+        echo "  Gallery Name: $newGalleryName"
+        echo "  Image Definition: $imageDefinition"
+        echo "  Hyper-V Generation: v2"
+        echo "  OS Type: Linux"
+        echo "  Publisher: RunnerImage"
+        echo "  Offer: UbuntuImage"
+        echo "  SKU: 2404"
+        echo "  OS State: generalized"
         az sig image-definition create \
           --hyper-v-generation v2 \
           --resource-group "$newGalleryResourceGroup" \
@@ -81,6 +97,14 @@ jobs:
           --os-state generalized
         
         # Publish image version into the gallery from the managed image
+        echo ""
+        echo "Publishing image version to gallery..."
+        echo "  Resource Group: $newGalleryResourceGroup"
+        echo "  Gallery Name: $newGalleryName"
+        echo "  Image Definition: $imageDefinition"
+        echo "  Image Version: 1.0.0"
+        echo "  Location: $location"
+        echo "  Source Managed Image: /subscriptions/$subscriptionId/resourceGroups/$resourceGroup/providers/Microsoft.Compute/images/$imageName"
         az sig image-version create \
           --resource-group "$newGalleryResourceGroup" \
           --gallery-name "$newGalleryName" \
@@ -94,8 +118,23 @@ jobs:
         if [ ${#storageAccountName} -lt 3 ]; then storageAccountName="${storageAccountName}img"; fi
         
         # Create storage account and container
+        echo ""
+        echo "Creating storage account..."
+        echo "  Storage Account Name: $storageAccountName"
+        echo "  Resource Group: $newGalleryResourceGroup"
+        echo "  Location: $location"
+        echo "  SKU: Standard_LRS"
         az storage account create --name "$storageAccountName" --resource-group "$newGalleryResourceGroup" --location "$location" --sku Standard_LRS
+        
         storageKey=$(az storage account keys list --resource-group "$newGalleryResourceGroup" --account-name "$storageAccountName" --query "[0].value" -o tsv)
+        
+        echo "::stop-commands::$(uuidgen)"
+        echo "Storage key retrieved: $storageKey"
+        echo "::"
+        
+        echo ""
+        echo "Creating container 'vhd'..."
+        echo "  Account Name: $storageAccountName"
         az storage container create --name vhd --account-name "$storageAccountName" --account-key "$storageKey"
         
         # Find latest image version
