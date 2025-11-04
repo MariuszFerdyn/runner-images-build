@@ -52,7 +52,7 @@ jobs:
         # Source parameters
         subscriptionId="${{ secrets.SUBSCRIPTIONID }}"
         resourceGroup="${{ vars.UbuntuImageResourceGroup }}"
-        imageName="Runner-Image-Ubuntu2404"
+        imageName="Runner-Image-Ubuntu2404Gen2"
         
         # Target gallery parameters
         newGalleryName="${{ vars.GALERYNAME }}"
