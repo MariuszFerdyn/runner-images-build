@@ -37,11 +37,11 @@ jobs:
         git clone https://github.com/MariuszFerdyn/virtual-environments.git
         cd ./virtual-environments
         Import-Module .\helpers\GenerateResourcesAndImage.ps1
-        $env:GALLERY_NAME = "${{ vars.GALERYNAME }}"
-        $env:GALLERY_RG_NAME = "${{ vars.GALERYNAME }}"
-        $env:GALLERY_IMAGE_NAME = "Ubuntu2404-Gen2"
-        $env:GALLERY_IMAGE_VERSION = "1.0.0"
-        $env:GALLERY_STORAGE_ACCOUNT_TYPE = "Standard_LRS"
+        #$env:GALLERY_NAME = "${{ vars.GALERYNAME }}"
+        #$env:GALLERY_RG_NAME = "${{ vars.GALERYNAME }}"
+        #$env:GALLERY_IMAGE_NAME = "Ubuntu2404-Gen2"
+        #$env:GALLERY_IMAGE_VERSION = "1.0.0"
+        #$env:GALLERY_STORAGE_ACCOUNT_TYPE = "Standard_LRS"
         GenerateResourcesAndImage -SubscriptionId ${{ secrets.SUBSCRIPTIONID }} -ResourceGroupName ${{ vars.UbuntuImageResourceGroup }} -ImageGenerationRepositoryRoot "$pwd" -ImageType Ubuntu2404Gen2 -AzureLocation ${{ vars.Region }} -AzureClientId ${{ secrets.APPLICATIONID }} -AzureClientSecret ${{ secrets.SECRET }} -AzureTenantId ${{ secrets.TENANTID }}
 
 
