@@ -5,6 +5,7 @@ on:
 
 jobs:
   build:
+    if: false
     runs-on: windows-2022
     steps:
     - uses: actions/checkout@v2
@@ -41,7 +42,7 @@ jobs:
     
   export:
     runs-on: ubuntu-22.04
-    needs: build
+    #needs: build
     steps:
     - name: Export Image
       shell: bash
@@ -153,7 +154,7 @@ jobs:
           --resource-group "$resourceGroup" \
           --name "$diskName" \
           --duration-in-seconds 36000 \
-          --query "accessSas" -o tsv)
+          --query "accessSAS" -o tsv)
         
         echo "::stop-commands::$(uuidgen)"
         echo "Disk SAS URL retrieved: $diskSasUrl"
